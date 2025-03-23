@@ -8,28 +8,28 @@ from rembg import remove
 
 # Maps for Variety
 variety_map = {
-    1: "Sweet Baby",
-    2: "Rocky 475",
-    3: "Kinaree 457"
+    0: "Sweet Baby",
+    1: "Rocky 475",
+    2: "Kinaree 457"
 }
 
 # Maps for Sweetness, Flesh Colour, and Flesh Firmness
 sweetness_map = {
-    1: "Less Sweet",
-    2: "Moderately Sweet",
-    3: "High Sweet"
+    0: "Less Sweet",
+    1: "Moderately Sweet",
+    2: "High Sweet"
 }
 
 flesh_colour_map = {
-    1: "Pale Red",
-    2: "Red",
-    3: "Deep Red"
+    0: "Pale Red",
+    1: "Red",
+    2: "Deep Red"
 }
 
 flesh_firmness_map = {
-    1: "Hard",
-    2: "Moderately Firm",
-    3: "Soft"
+    0: "Hard",
+    1: "Moderately Firm",
+    2: "Soft"
 }
 
 
@@ -43,6 +43,7 @@ app = Flask(__name__)
 
 # Load the pre-trained model once at startup.
 MODEL_PATH = "RandomForestClassifier_model.pkl"
+SCALAER_MODEL_PATH = "StandardScaler.pkl"
 try:
     model = joblib.load(MODEL_PATH)
     logging.info("Model loaded successfully.")
@@ -139,6 +140,14 @@ def extract_features_from_image(image, weight):
     return features, None
 
 
+def reshape_features(features):
+    scaler = joblib.load(SCALAER_MODEL_PATH)
+    features = np.array(features).reshape(1, -1)
+    features = scaler.transform(features)
+    logging.debug("Feature reshping completed. Features: %s", features)
+    return features
+
+
 @app.route('/analyze', methods=['POST'])
 def analyze():
     logging.info("Received request at /analyze endpoint.")
@@ -169,8 +178,11 @@ def analyze():
         logging.error("Feature extraction failed: %s", error)
         return jsonify({'error': error}), 400
 
+    scaled_features = reshape_features(features)
+
     logging.info("Extracted features successfully. Running prediction.")
-    prediction = model.predict([features])[0]
+
+    prediction = model.predict(scaled_features)[0]
     logging.info("Prediction completed: %s", prediction)
 
     # ---------------------------------------------
